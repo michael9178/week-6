@@ -63,13 +63,16 @@ function updateData(){
 	var w = window.innerWidth;
 	var h = window.innerHeight;
 
-	var checked = document.getElementById("interpolation").checked
+	var checked_i = document.getElementById("interpolation").checked;
+	var checked_h = document.getElementById("heatmap").checked;
+	var spread_object = document.getElementById("spread");
+	var spread = spread_object.options[spread_object.selectedIndex].value;
 
-	request = "/getData?lat1=" + lat1 + "&lat2=" + lat2 + "&lng1=" + lng1 + "&lng2=" + lng2 + "&w=" + w + "&h=" + h + "&cell_size=" + cell_size + "&analysis=" + checked
+	if (checked_i == true){
+		request = "/getData?lat1=" + lat1 + "&lat2=" + lat2 + "&lng1=" + lng1 + "&lng2=" + lng2 + "&w=" + w + "&h=" + h + "&cell_size=" + cell_size + "&analysis_i=" + checked_i
+		console.log(request);
 
-	console.log(request);
-
-  	d3.json(request, function(data) {
+	  	d3.json(request, function(data) {
 
 		//create placeholder circle geometry and bind it to data
 		var circles = g.selectAll("circle").data(data.features);
@@ -97,7 +100,7 @@ function updateData(){
 		update();
 		map.on("viewreset", update);
 
-		if (checked == true){
+		
 
 			var topleft = projectPoint(lat2, lng1);
 
@@ -106,7 +109,7 @@ function updateData(){
 				.style("left", topleft.x + "px")
 				.style("top", topleft.y + "px");
 
-			var rectangles = g_overlay.selectAll("rect").data(data.analysis);
+			var rectangles = g_overlay.selectAll("rect").data(data.analysis_i);
 			rectangles.enter().append("rect");
 
 			rectangles
@@ -117,7 +120,7 @@ function updateData(){
 		    	.attr("fill-opacity", ".2")
 		    	.attr("fill", function(d) { return "hsl(" + Math.floor((1-d.value)*250) + ", 100%, 50%)"; });
 		
-		};
+		
 
 		// function to update the data
 		function update() {
@@ -146,6 +149,91 @@ function updateData(){
     			.attr("r", function(d) { return Math.pow(d.properties.price,.3); });
 		};
 	});
+	};
+
+	if (checked_h == true){
+	request = "/getData?lat1=" + lat1 + "&lat2=" + lat2 + "&lng1=" + lng1 + "&lng2=" + lng2 + "&w=" + w + "&h=" + h + "&cell_size=" + cell_size + "&analysis_h=" + checked_h + "&spread=" + spread
+	console.log(request);
+	
+  	d3.json(request, function(data) {
+
+		//create placeholder circle geometry and bind it to data
+		var circles = g.selectAll("circle").data(data.features);
+
+		console.log(data);
+
+		circles.enter()
+			.append("circle")
+			.on("mouseover", function(d){
+				tooltip.style("visibility", "visible");
+				tooltip_title.text(d.properties.name);
+				tooltip_price.text("Price: " + d.properties.price);
+			})
+			.on("mousemove", function(){
+				tooltip.style("top", (d3.event.pageY-10)+"px")
+				tooltip.style("left",(d3.event.pageX+10)+"px");
+			})
+			.on("mouseout", function(){
+				tooltip.style("visibility", "hidden");
+			})
+			// .attr("fill", function(d) { return "hsl(" + Math.floor((1-d.properties.priceNorm)*250) + ", 100%, 50%)"; })
+		;
+
+		// call function to update geometry
+		update();
+		map.on("viewreset", update);
+
+		
+
+			var topleft = projectPoint(lat2, lng1);
+
+			svg_overlay.attr("width", w)
+				.attr("height", h)
+				.style("left", topleft.x + "px")
+				.style("top", topleft.y + "px");
+
+			var rectangles = g_overlay.selectAll("rect").data(data.analysis_h);
+			rectangles.enter().append("rect");
+
+			rectangles
+				.attr("x", function(d) { return d.x; })
+				.attr("y", function(d) { return d.y; })
+				.attr("width", function(d) { return d.width; })
+				.attr("height", function(d) { return d.height; })
+		    	.attr("fill-opacity", ".2")
+		    	.attr("fill", function(d) { return "hsl(" + Math.floor((1-d.value)*250) + ", 100%, 50%)"; });
+		
+		
+
+		// function to update the data
+		function update() {
+
+			g_overlay.selectAll("rect").remove()
+
+			// get bounding box of data
+		    var bounds = path.bounds(data),
+		        topLeft = bounds[0],
+		        bottomRight = bounds[1];
+
+		    var buffer = 50;
+
+		    // reposition the SVG to cover the features.
+		    svg .attr("width", bottomRight[0] - topLeft[0] + (buffer * 2))
+		        .attr("height", bottomRight[1] - topLeft[1] + (buffer * 2))
+		        .style("left", (topLeft[0] - buffer) + "px")
+		        .style("top", (topLeft[1] - buffer) + "px");
+
+		    g   .attr("transform", "translate(" + (-topLeft[0] + buffer) + "," + (-topLeft[1] + buffer) + ")");
+
+		    // update circle position and size
+		    circles
+		    	.attr("cx", function(d) { return projectPoint(d.geometry.coordinates[0], d.geometry.coordinates[1]).x; })
+		    	.attr("cy", function(d) { return projectPoint(d.geometry.coordinates[0], d.geometry.coordinates[1]).y; })
+    			.attr("r", function(d) { return Math.pow(d.properties.price,.3); });
+		};
+	});
+	};
+
 
 };
 
